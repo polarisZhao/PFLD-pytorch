@@ -5,8 +5,8 @@ import cv2
 import shutil
 import sys
 debug = False
-sys.path.append("/Users/zhaozhichao/Documents/github/PFLD-pytorch")
-from euler_angles_utils import calculate_pitch_yaw_roll
+sys.path.append("/home/zhaozhichao/Documents/github/PFLD-pytorch")
+from utils import calculate_pitch_yaw_roll
 
 
 def rotate_landmark(angle, center, landmark):
@@ -151,10 +151,7 @@ class WFLWData():
                 self.landmarks.append(landmark)
 
     def save_data(self, path, prefix):
-        attributes = [
-            self.pose, self.expression, self.illumination, self.make_up,
-            self.occlusion, self.blur
-        ]
+        attributes = [self.pose, self.expression, self.illumination, self.make_up, self.occlusion, self.blur]
         attributes = np.asarray(attributes, dtype=np.int32)
         attributes_str = ' '.join(list(map(str, attributes)))
         labels = []
@@ -203,7 +200,7 @@ def get_dataset_list(landmarkDir, outdir, imgDir, is_train):
 
             img_name = Img.path
             Img.load_data(is_train, 10)
-            print("img_name", img_name)
+            # print("img_name", img_name)
 
             _, filename = os.path.split(img_name)
             filename, _ = os.path.splitext(filename)
@@ -234,7 +231,7 @@ if __name__ == "__main__":
         landmark_dir = landmark_prefix + str(process_type) + landmark_ext
 
         outdir = os.path.join(data_root, str(process_type) + "_data")
-        print(outdir)
+        # print(outdir)
         if os.path.exists(outdir):
             shutil.rmtree(outdir)
         os.mkdir(outdir)
