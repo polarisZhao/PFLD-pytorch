@@ -1,200 +1,229 @@
 #!/usr/bin/env python3
 #-*- coding:utf-8 -*-
+
 import argparse
 import logging
 from pathlib import Path
 import time
+import os
 
 import numpy as np
 import torch
-import torchvision
-from torchvision import datasets, transforms
-from dataset import WLFWDatasets
+
 from torch.utils import data
 from torch.utils.data import DataLoader
+import torchvision
+from torchvision import datasets, transforms
+import torchvision.utils as vutils
+from tensorboardX import SummaryWriter
 
-from models import pfld
+from dataset.datasets import WLFWDatasets
+from models.pfld import PFLDInference, AuxiliaryNet
+from pfld.loss import PFLDLoss
+from pfld.utils import AverageMeter
+
 
 def print_args(args):
     for arg in vars(args):
         s = arg + ': ' + str(getattr(args, arg))
         logging.info(s)
 
-# def save_checkpoint(state, filename='checkpoint.pth.tar'):
-#     torch.save(state, filename)
-#     logging.info(f'Save checkpoint to {filename}')
 
-# def str2bool(v):
-#     if v.lower() in ('yes', 'true', 't', 'y', '1'):
-#         return True
-#     elif v.lower() in ('no', 'false', 'f', 'n', '0'):
-#         return False
-#     else:
-#         raise argparse.ArgumentTypeError('Boolean value expected')
+def save_checkpoint(state, filename='checkpoint.pth.tar'):
+    torch.save(state, filename)
+    logging.info('Save checkpoint to {0:}'.format(filename))
 
-class AverageMeter(object):
-    """Computes and stores the average and current value"""
 
-    def __init__(self):
-        self.reset()
+def str2bool(v):
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected')
 
-    def reset(self):
-        self.val = 0
-        self.avg = 0
-        self.sum = 0
-        self.count = 0
 
-    def update(self, val, n=1):
-        self.val = val
-        self.sum += val * n
-        self.count += n
-        self.avg = self.sum / self.count
-
-def train(train_loader, model, criterion, optimizer, epoch):
-    batch_time = AverageMeter()
-    data_time = AverageMeter()
+def train(train_loader, plfd_backbone, auxiliarynet, criterion, optimizer,
+          epoch):
     losses = AverageMeter()
 
-    model.train()
+    for img, landmark_gt, attribute_gt, euler_angle_gt in train_loader:
+        img.requires_grad = False
+        img = img.cuda(non_blocking=True)
 
-    for img, landmark, attribute, euler_angle in train_loader:
-        feature , output = model(img)
-        loss = criterion(output, landmark)
-        print(loss)
-        # losses.update(loss.item(), input.size(0))
+        attribute_gt.requires_grad = False
+        attribute_gt = attribute_gt.cuda(non_blocking=True)
 
-        # compute gradient and do SGD step
+        landmark_gt.requires_grad = False
+        landmark_gt = landmark_gt.cuda(non_blocking=True)
+
+        euler_angle_gt.requires_grad = False
+        euler_angle_gt = euler_angle_gt.cuda(non_blocking=True)
+
+        plfd_backbone = plfd_backbone.cuda()
+        auxiliarynet = auxiliarynet.cuda()
+
+        features, landmarks = plfd_backbone(img)
+        angle = auxiliarynet(features)
+        weighted_loss, loss = criterion(attribute_gt, landmark_gt, euler_angle_gt,
+                                    angle, landmarks, args.train_batchsize)
+
         optimizer.zero_grad()
-        loss.backward()
+        weighted_loss.backward()
         optimizer.step()
 
-        # log
-        # if i % args.log_freq == 0:
-        #     logging.info(f'Epoch: [{epoch}][{i}/{len(train_loader)}]\t'
-        #                  f'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
-        #                  f'Loss {losses.val:.4f} ({losses.avg:.4f})')
-    
+        losses.update(loss.item())
+    return weighted_loss, loss
 
-# def validate(val_loader, model, criterion, epoch):
-#     model.eval()
 
-#     end = time.time()
-#     with torch.no_grad():
-#         losses = []
-#         for i, (input, target) in enumerate(val_loader):
-#             # compute output
-#             target.requires_grad = False
-#             target = target.cuda(non_blocking=True)
-#             output = model(input)
+def validate(wlfw_val_dataloader, plfd_backbone, auxiliarynet, criterion,
+             epoch):
+    plfd_backbone.eval()
+    auxiliarynet.eval()
 
-#             loss = criterion(output, target)
-#             losses.append(loss.item())
+    losses = []
+    with torch.no_grad():
+        for img, landmark_gt, attribute_gt, euler_angle_gt in wlfw_val_dataloader:
+            img.requires_grad = False
+            img = img.cuda(non_blocking=True)
 
-#         elapse = time.time() - end
-#         loss = np.mean(losses)
-#         logging.info(f'Val: [{epoch}][{len(val_loader)}]\t'
-#                      f'Loss {loss:.4f}\t'
-#                      f'Time {elapse:.3f}')
+            attribute_gt.requires_grad = False
+            attribute_gt = attribute_gt.cuda(non_blocking=True)
+
+            landmark_gt.requires_grad = False
+            landmark_gt = landmark_gt.cuda(non_blocking=True)
+
+            euler_angle_gt.requires_grad = False
+            euler_angle_gt = euler_angle_gt.cuda(non_blocking=True)
+
+            plfd_backbone = plfd_backbone.cuda()
+            auxiliarynet = auxiliarynet.cuda()
+
+            _, landmark = plfd_backbone(img)
+
+            loss = torch.mean(
+                torch.sum((landmark_gt - landmark)**2,axis=1))
+            losses.append(loss.cpu().numpy())
+
+    return np.mean(losses)
 
 
 def main(args):
     # Step 1: parse args config
     logging.basicConfig(
-        format='[%(asctime)s] [p%(process)s] [%(pathname)s:%(lineno)d] [%(levelname)s] %(message)s',
+        format=
+        '[%(asctime)s] [p%(process)s] [%(pathname)s:%(lineno)d] [%(levelname)s] %(message)s',
         level=logging.INFO,
         handlers=[
             logging.FileHandler(args.log_file, mode='w'),
             logging.StreamHandler()
-        ]
-    )
+        ])
     print_args(args)
 
-    # Step 2: model, criterion, optimizer & resume
-    model = pfld.PFLDInference()
-    criterion = torch.nn.L1Loss(reduction='sum') 
-    logging.info("loss log message")
+    # Step 2: model, criterion, optimizer, scheduler
+    plfd_backbone = PFLDInference().cuda()
+    auxiliarynet = AuxiliaryNet().cuda()
+    criterion = PFLDLoss()
+    optimizer = torch.optim.Adam(
+        [{
+            'params': plfd_backbone.parameters()
+        }, {
+            'params': auxiliarynet.parameters()
+        }],
+        lr=args.base_lr,
+        weight_decay=args.weight_decay)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer, mode='min', patience=args.lr_patience, verbose=True)
 
-    optimizer = torch.optim.SGD(model.parameters(),
-                                lr=args.base_lr,
-                                momentum=args.momentum,
-                                weight_decay=args.weight_decay,
-                                nesterov=True) 
-
-    if args.resume:
-        if Path(args.resume).is_file():
-            logging.info(f'==> loading checkpoint {args.resume}')
-            checkpoint = torch.load(args.resume, map_location=lambda storage, loc: storage)['state_dict']
-            model.load_state_dict(checkpoint)
-        else:
-            logging.info(f'==> no checkpoint found at {args.resume}')
-
-    # step 3: data 
-    # argumetion # ! change data argumetion
+    # step 3: data
+    # argumetion
     transform = transforms.Compose([transforms.ToTensor()])
-    # ! change train dataset and loader
     wlfwdataset = WLFWDatasets(args.dataroot, transform)
-    dataloader = DataLoader(wlfwdataset, batch_size=256, shuffle=True, num_workers=0, drop_last=False)
+    dataloader = DataLoader(
+        wlfwdataset,
+        batch_size=args.train_batchsize,
+        shuffle=True,
+        num_workers=args.workers,
+        drop_last=False)
 
-    # for img, landmark, attribute, euler_angle in dataloader:
-    #     print("img shape", img.shape)
-    #     print("landmark size", landmark.size())
-    #     print("attrbute size", attribute.size())
-    #     print("euler_angle", euler_angle.size())
+    wlfw_val_dataset = WLFWDatasets(args.val_dataroot, transform)
+    wlfw_val_dataloader = DataLoader(
+        wlfw_val_dataset,
+        batch_size=args.val_batchsize,
+        shuffle=False,
+        num_workers=args.workers)
 
     # step 4: run
-    # if args.test_initial:
-    #     logging.info('Testing from initial')
-    #     validate(val_loader, model, criterion, args.start_epoch)
-
+    writer = SummaryWriter(args.tensorboard)
     for epoch in range(args.start_epoch, args.end_epoch + 1):
-        torch.optim.lr_scheduler.StepLR(optimizer, args.lr_step_size, args.lr_gamma) # ! change learning
-        train(dataloader, model, criterion, optimizer, epoch)
+        weighted_train_loss, train_loss = train(dataloader, plfd_backbone, auxiliarynet,
+                                      criterion, optimizer, epoch)
+        filename = os.path.join(
+            str(args.snapshot), "checkpoint_epoch_" + str(epoch) + '.pth.tar')
+        save_checkpoint({
+            'epoch': epoch,
+            'plfd_backbone': plfd_backbone.state_dict(),
+            'auxiliarynet': auxiliarynet.state_dict()
+        }, filename)
 
-    #     filename = f'{args.snapshot}_checkpoint_epoch_{epoch}.pth.tar'
-    #     save_checkpoint(
-    #         {
-    #             'epoch': epoch,
-    #             'state_dict': model.state_dict(),
-    #         },
-    #         filename
-    #     )
-    #     validate(val_loader, model, criterion, epoch)
+        val_loss = validate(wlfw_val_dataloader, plfd_backbone, auxiliarynet,
+                            criterion, epoch)
+
+        scheduler.step(val_loss)
+        writer.add_scalar('data/weighted_loss', weighted_train_loss, epoch)
+        writer.add_scalars('data/loss', {'val loss': val_loss, 'train loss': train_loss}, epoch)
+    writer.close()
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Trainging Template')
     # general
-    # parser.add_argument('-j', '--workers', default=8, type=int)
-    # parser.add_argument('--devices_id', default='0', type=str)
-    # parser.add_argument('--test_initial', default='false', type=str2bool)
+    parser.add_argument('-j', '--workers', default=8, type=int)
+    parser.add_argument('--devices_id', default='0', type=str)  #TBD
+    parser.add_argument('--test_initial', default='false', type=str2bool)  #TBD
 
     # training
     ##  -- optimizer
-    parser.add_argument('--base_lr', default=0.00001, type=int)
-    parser.add_argument('--momentum', default=0.9, type=float, metavar='M', help='momentum')
-    parser.add_argument('--weight-decay', '--wd', default=5e-4, type=float)
+    parser.add_argument('--base_lr', default=0.0001, type=int)
+    parser.add_argument('--weight-decay', '--wd', default=1e-6, type=float)
 
     # -- lr
-    parser.add_argument("--lr_step_size", default=20, type=int)
-    parser.add_argument("--lr_gamma", default=0.1, type=int)
-    # -- resume log and checkpoint 
-    parser.add_argument('--resume', default='', type=str, metavar='PATH')
-    # parser.add_argument('--snapshot', default='./test', type=str, metavar='PATH')
-    parser.add_argument('--log_file', default="train.logs", type=str)
-
-    # --dataset
-    parser.add_argument('--dataroot', default='data/train_data/list.txt', type=str, metavar='PATH')
-    # parser.add_argument('--train_batchsize', default=56, type=int)
-    # parser.add_argument('--val_batchsize', default=8, type=int)
+    parser.add_argument("--lr_patience", default=20, type=int)
 
     # -- epoch
     parser.add_argument('--start_epoch', default=1, type=int)
-    parser.add_argument('--end_epoch', default=100, type=int)
+    parser.add_argument('--end_epoch', default=1000, type=int)
+
+    # -- snapshot、tensorboard log and checkpoint
+    parser.add_argument(
+        '--snapshot',
+        default='./checkpoint/snapshot/',
+        type=str,
+        metavar='PATH')
+    parser.add_argument(
+        '--log_file', default="./checkpoint/train.logs", type=str)
+    parser.add_argument(
+        '--tensorboard', default="./checkpoint/tensorboard", type=str)
+    parser.add_argument(
+        '--resume', default='', type=str, metavar='PATH')  # TBD
+
+    # --dataset
+    parser.add_argument(
+        '--dataroot',
+        default='./data/train_data/list.txt',
+        type=str,
+        metavar='PATH')
+    parser.add_argument(
+        '--val_dataroot',
+        default='./data/test_data/list.txt',
+        type=str,
+        metavar='PATH')
+    parser.add_argument('--train_batchsize', default=256, type=int)
+    parser.add_argument('--val_batchsize', default=8, type=int)
     args = parser.parse_args()
     return args
+
 
 if __name__ == "__main__":
     args = parse_args()
     main(args)
-
-
-

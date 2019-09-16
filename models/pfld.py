@@ -1,4 +1,13 @@
-# -*- coding: UTF-8 -*-
+#!/usr/bin/env python3
+# -*- coding:utf-8 -*-
+
+######################################################
+#
+# pfld.py -
+# written by  zhaozhichao
+#
+######################################################
+
 import torch
 import torch.nn as nn
 import math
@@ -7,14 +16,15 @@ import math
 def conv_bn(inp, oup, kernel, stride, padding=1):
     return nn.Sequential(
         nn.Conv2d(inp, oup, kernel, stride, padding, bias=False),
-        nn.BatchNorm2d(oup), 
+        nn.BatchNorm2d(oup),
         nn.ReLU(inplace=True))
 
 
 def conv_1x1_bn(inp, oup):
-    return nn.Sequential(nn.Conv2d(inp, oup, 1, 1, 0, bias=False),
-                         nn.BatchNorm2d(oup),
-                        nn.ReLU(inplace=True))
+    return nn.Sequential(
+        nn.Conv2d(inp, oup, 1, 1, 0, bias=False),
+        nn.BatchNorm2d(oup),
+        nn.ReLU(inplace=True))
 
 
 class InvertedResidual(nn.Module):
@@ -29,13 +39,14 @@ class InvertedResidual(nn.Module):
             nn.Conv2d(inp, inp * expand_ratio, 1, 1, 0, bias=False),
             nn.BatchNorm2d(inp * expand_ratio),
             nn.ReLU(inplace=True),
-            nn.Conv2d(inp * expand_ratio,
-                      inp * expand_ratio,
-                      3,
-                      stride,
-                      1,
-                      groups=inp * expand_ratio,
-                      bias=False),
+            nn.Conv2d(
+                inp * expand_ratio,
+                inp * expand_ratio,
+                3,
+                stride,
+                1,
+                groups=inp * expand_ratio,
+                bias=False),
             nn.BatchNorm2d(inp * expand_ratio),
             nn.ReLU(inplace=True),
             nn.Conv2d(inp * expand_ratio, oup, 1, 1, 0, bias=False),
@@ -53,21 +64,13 @@ class PFLDInference(nn.Module):
     def __init__(self):
         super(PFLDInference, self).__init__()
 
-        self.conv1 = nn.Conv2d(3,
-                               64,
-                               kernel_size=3,
-                               stride=2,
-                               padding=1,
-                               bias=False)
+        self.conv1 = nn.Conv2d(
+            3, 64, kernel_size=3, stride=2, padding=1, bias=False)
         self.bn1 = nn.BatchNorm2d(64)
         self.relu = nn.ReLU(inplace=True)
 
-        self.conv2 = nn.Conv2d(64,
-                               64,
-                               kernel_size=3,
-                               stride=1,
-                               padding=1,
-                               bias=False)
+        self.conv2 = nn.Conv2d(
+            64, 64, kernel_size=3, stride=1, padding=1, bias=False)
         self.bn2 = nn.BatchNorm2d(64)
         self.relu = nn.ReLU(inplace=True)
 
@@ -97,8 +100,7 @@ class PFLDInference(nn.Module):
         self.avg_pool2 = nn.AvgPool2d(7)
         self.fc = nn.Linear(176, 196)
 
-    def forward(self, x):
-        # x: 3, 112, 112
+    def forward(self, x):  # x: 3, 112, 112
         x = self.relu(self.bn1(self.conv1(x)))  # [64, 56, 56]
         x = self.relu(self.bn2(self.conv2(x)))  # [64, 56, 56]
         x = self.conv3_1(x)
@@ -154,17 +156,13 @@ class AuxiliaryNet(nn.Module):
 
         return x
 
-#     euler_angles_pre = slim.fully_connected(fc1,num_outputs=3, activation_fn=None, scope='pfld_fc2')
-#     landmarks_loss = tf.reduce_sum(tf.square(landmarks_pre - landmark), axis=1)
-#     landmarks_loss = tf.reduce_mean(landmarks_loss)
-#     return landmarks_pre, landmarks_loss, euler_angles_pre
 
-if __name__ == '__main__':
-    input = torch.randn(1, 3, 112, 112)
-    plfd_backbone = PFLDInference()
-    auxiliarynet = AuxiliaryNet()
-    features, landmarks = plfd_backbone(input)
-    angle = auxiliarynet(features)
+# if __name__ == '__main__':
+#     input = torch.randn(1, 3, 112, 112)
+#     plfd_backbone = PFLDInference()
+#     auxiliarynet = AuxiliaryNet()
+#     features, landmarks = plfd_backbone(input)
+#     angle = auxiliarynet(features)
 
-    print("angle.shape:{0:}, landmarks.shape: {1:}".format(
-        angle.shape, landmarks.shape))
+#     print("angle.shape:{0:}, landmarks.shape: {1:}".format(
+#         angle.shape, landmarks.shape))
