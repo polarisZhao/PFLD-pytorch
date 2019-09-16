@@ -1,6 +1,6 @@
 # PFLD-pytorch
 
-
+Implementation of  PFLD A Practical Facial Landmark Detector by pytorch.
 
 #### install requirements
 
@@ -33,8 +33,19 @@ testing:
 $ python3 test.py
 ~~~
 
-
-
-#### results
+#### results:
 
 ![](./results/example.png)
+
+#### reference: 
+
+ PFLD: A Practical Facial Landmark Detector https://arxiv.org/pdf/1902.10859.pdf
+
+#### TODO:
+
+- [ ] ncnn inference
+
+- [ ] evaluation on AFLW & 300W
+
+- [ ] retrain on datasets AFLW and 300W
+
