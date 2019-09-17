@@ -19,6 +19,11 @@ pip3 install -r requirements.txt
 3. Unzip above two packages and put them on `./datasets/WFLW/`
 4. move `Mirror98.txt` to `WFLW/WFLW_annotations`
 
+~~~shell
+$ cd data 
+$ python3 SetPreparation.py
+~~~
+
 #### training & testing
 
 training :
