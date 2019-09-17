@@ -4,8 +4,8 @@ import numpy as np
 import cv2
 import shutil
 import sys
-sys.path.append('/home/zhaozhichao/Downloads/PFLD-master/')
-from euler_angles_utils import calculate_pitch_yaw_roll
+sys.path.append(os.path.abspath(os.path.join(os.getcwd(), "..")))
+from pfld.utils import calculate_pitch_yaw_roll
 debug = False
 
 def rotate(angle, center, landmark):
