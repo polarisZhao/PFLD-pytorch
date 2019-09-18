@@ -48,9 +48,9 @@ $ python3 test.py
 
 #### TODO:
 
-- [ ] ncnn inference
+- [ ] fix bugs
 
-- [ ] evaluation on AFLW & 300W
+- [ ] ncnn inference
 
 - [ ] retrain on datasets AFLW and 300W
 
