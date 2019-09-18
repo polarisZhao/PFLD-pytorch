@@ -10,48 +10,77 @@ import cv2
 from models.pfld import PFLDInference, AuxiliaryNet
 from mtcnn.detector import detect_faces, show_bboxes
 
+
 def main(args):
     checkpoint = torch.load(args.model_path)
     plfd_backbone = PFLDInference().cuda()
     plfd_backbone.load_state_dict(checkpoint['plfd_backbone'])
     plfd_backbone.eval()
     plfd_backbone = plfd_backbone.cuda()
-    transform = transforms.Compose([ transforms.ToTensor()])
+    transform = transforms.Compose([transforms.ToTensor()])
 
     cap = cv2.VideoCapture(0)
     while True:
         ret, img = cap.read()
         if not ret: break
 
+        height, width = img.shape[:2]
+
         bounding_boxes, landmarks = detect_faces(img)
+        for box in bounding_boxes:
+            score = box[4]
+            x1, y1, x2, y2 = (box[:4]+0.5).astype(np.int32)
+            w = x2 - x1 + 1
+            h = y2 - y1 + 1
 
-        maxval_index = 0
-        if(len(bounding_boxes) > 0):
-            maxval_index = np.argmax(bounding_boxes[:,4])
+            size = int(max([w, h])*1.1)
+            cx = x1 + w//2
+            cy = y1 + h//2
+            x1 = cx - size//2
+            x2 = x1 + size
+            y1 = cy - size//2
+            y2 = y1 + size
 
-        if(len(bounding_boxes) > maxval_index - 1 and len(bounding_boxes) > 0):
-            face = img[int(bounding_boxes[maxval_index][1]):int(bounding_boxes[maxval_index][3]), int(bounding_boxes[maxval_index][0]):int(bounding_boxes[maxval_index][2])]
-            if face.size == 0:
-                continue
-            face_resized = cv2.resize(face, dsize=(112, 112), interpolation=cv2.INTER_LINEAR)
-            face_resized= cv2.cvtColor(face_resized, cv2.COLOR_BGR2RGB)
-            face_resized = transform(face_resized).unsqueeze(0).cuda()
-            _, landmarks = plfd_backbone(face_resized)
-            pre_landmark = landmarks.cpu().detach().numpy()[0].reshape(-1, 2) * [int(bounding_boxes[maxval_index][2]) - int(bounding_boxes[maxval_index][0]), int(bounding_boxes[maxval_index][3]) - int(bounding_boxes[maxval_index][1])]
+            dx = max(0, -x1)
+            dy = max(0, -y1)
+            x1 = max(0, x1)
+            y1 = max(0, y1)
 
+            edx = max(0, x2 - width)
+            edy = max(0, y2 - height)
+            x2 = min(width, x2)
+            y2 = min(height, y2)
+
+            cropped = img[y1:y2, x1:x2]
+            if (dx > 0 or dy > 0 or edx > 0 or edy > 0):
+                cropped = cv2.copyMakeBorder(cropped, dy, edy, dx, edx, cv2.BORDER_CONSTANT, 0)
+            
+            cropped = cv2.resize(cropped, (112, 112))
+
+            input = cv2.resize(cropped, (112, 112))
+            input = cv2.cvtColor(input, cv2.COLOR_BGR2RGB)
+            input = transform(input).unsqueeze(0).cuda()
+            _, landmarks = plfd_backbone(input)
+            pre_landmark = landmarks[0]
+            pre_landmark = pre_landmark.cpu().detach().numpy().reshape(-1, 2) * [size, size]
             for (x, y) in pre_landmark.astype(np.int32):
-                cv2.circle(face, (x, y), 1, (255,0,0),-1)
+                cv2.circle(img, (x1 + x, y1 + y), 1, (0, 0, 255))
 
-            cv2.imshow("xxxx", face)
-            if cv2.waitKey(10) == 27:
-                break
+        cv2.imshow('0', img)
+        if cv2.waitKey(10) == 27:
+            break
+
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Testing')
-    parser.add_argument('--model_path', default="./checkpoint/snapshot/checkpoint.pth.tar", type=str)
+    parser.add_argument(
+        '--model_path',
+        default="./checkpoint/snapshot/checkpoint.pth.tar",
+        type=str)
     args = parser.parse_args()
     return args
+
 
 if __name__ == "__main__":
     args = parse_args()
