@@ -24,6 +24,8 @@ def validate(wlfw_val_dataloader, plfd_backbone, auxiliarynet):
 
     with torch.no_grad():
         losses = []
+        losses_ION = []
+
         for img, landmark_gt, attribute_gt, euler_angle_gt in wlfw_val_dataloader:
             img.requires_grad = False
             img = img.cuda(non_blocking=True)
@@ -42,31 +44,23 @@ def validate(wlfw_val_dataloader, plfd_backbone, auxiliarynet):
 
             _, landmarks = plfd_backbone(img)
 
-            loss = torch.mean(torch.sqrt(
-                torch.sum((landmark_gt - landmarks)**2,axis=1)))
+            loss = torch.mean(
+                torch.sqrt(torch.sum((landmark_gt - landmarks)**2, axis=1))
+                )
 
-
-            # show_img = np.array(np.transpose(img[0].cpu().numpy(), (1, 2, 0)))
-            # print(show_img)
-            # show_img = (show_img * 256).astype(np.uint8)
-            # np.clip(show_img, 0, 255)
-            # print(show_img.shape)
-
-            # pre_landmark = landmarks.cpu().numpy()[0].reshape(-1, 2) * [112, 112]
-
-            # cv2.imwrite("xxx.jpg", show_img)
-            # img_clone = cv2.imread("xxx.jpg")
-
-
-            # for (x, y) in pre_landmark.astype(np.int32):
-            #     print("x:{0:}, y:{1:}".format(x, y))
-            #     cv2.circle(img_clone, (x, y), 1, (255,0,0),-1)
-
-            # cv2.imshow("xxxx", img_clone)
-            # cv2.waitKey(0)
-
+            landmarks = landmarks.cpu().numpy()
+            landmarks = landmarks.reshape(landmarks.shape[0], -1, 2)
+            landmark_gt = landmark_gt.reshape(landmark_gt.shape[0], -1, 2).cpu().numpy()
+            error_diff = np.sum(np.sqrt(np.sum((landmark_gt - landmarks) ** 2, axis=2)), axis=1)
+            interocular_distance = np.sqrt(np.sum((landmarks[:, 60, :] - landmarks[:,72, :]) ** 2, axis=1))
+            # interpupil_distance = np.sqrt(np.sum((landmarks[:, 60, :] - landmarks[:, 72, :]) ** 2, axis=1))
+            error_norm = np.mean(error_diff / interocular_distance)
         losses.append(loss.cpu().numpy())
-        print(np.mean(losses))
+        losses_ION.append(error_norm)
+
+        print("NME", np.mean(losses))
+        print("ION", np.mean(losses_ION))
+
 
 def main(args):
     checkpoint = torch.load(args.model_path)
