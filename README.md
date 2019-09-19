@@ -16,7 +16,7 @@ pip3 install -r requirements.txt
 
 1. WFLW Training and Testing images [[Google Drive](https://drive.google.com/file/d/1hzBd48JIdWTJSsATBEB_eFVvPL1bx6UC/view?usp=sharing)] [[Baidu Drive](https://pan.baidu.com/s/1paoOpusuyafHY154lqXYrA)]
 2. WFLW  [Face Annotations](https://wywu.github.io/projects/LAB/support/WFLW_annotations.tar.gz)
-3. Unzip above two packages and put them on `./datasets/WFLW/`
+3. Unzip above two packages and put them on `./data/WFLW/`
 4. move `Mirror98.txt` to `WFLW/WFLW_annotations`
 
 ~~~shell
