@@ -188,7 +188,7 @@ def parse_args():
     parser.add_argument('--weight-decay', '--wd', default=1e-6, type=float)
 
     # -- lr
-    parser.add_argument("--lr_patience", default=20, type=int)
+    parser.add_argument("--lr_patience", default=40, type=int)
 
     # -- epoch
     parser.add_argument('--start_epoch', default=1, type=int)
