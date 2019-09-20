@@ -7,11 +7,11 @@ class PFLDLoss(nn.Module):
 
     def forward(self, attribute_gt, landmark_gt, euler_angle_gt, angle, landmarks, train_batchsize):
         weight_angle = torch.sum(1 - torch.cos(angle - euler_angle_gt), axis=1)
-
+        print(weight_angle[:3])
         attributes_w_n = attribute_gt[:, 1:6].float()
         mat_ratio = torch.mean(attributes_w_n, axis=0)
         mat_ratio = torch.Tensor([
-            1 / (x*256) if x > 0 else 1 for x in mat_ratio
+            1.0 / (x) if x > 0 else train_batchsize for x in mat_ratio
         ]).cuda()
         weight_attribute = torch.sum(attributes_w_n.mul(mat_ratio), axis=1)
 
