@@ -102,13 +102,15 @@ class ImageDate():
 
         if is_train:
             while len(self.imgs) < repeat:
-                angle = np.random.randint(-20, 20)
+                angle = np.random.randint(-30, 30)
                 cx, cy = center
                 cx = cx + int(np.random.randint(-boxsize*0.1, boxsize*0.1))
                 cy = cy + int(np.random.randint(-boxsize * 0.1, boxsize * 0.1))
                 M, landmark = rotate(angle, (cx,cy), self.landmark)
 
                 imgT = cv2.warpAffine(img, M, (int(img.shape[1]*1.1), int(img.shape[0]*1.1)))
+
+                
                 wh = np.ptp(landmark, axis=0).astype(np.int32) + 1
                 size = np.random.randint(int(np.min(wh)), np.ceil(np.max(wh) * 1.25))
                 xy = np.asarray((cx - size // 2, cy - size//2), dtype=np.int32)
@@ -141,6 +143,7 @@ class ImageDate():
                     imgT = cv2.flip(imgT, 1)
                 self.imgs.append(imgT)
                 self.landmarks.append(landmark)
+
     def save_data(self, path, prefix):
         attributes = [self.pose, self.expression, self.illumination, self.make_up, self.occlusion, self.blur]
         attributes = np.asarray(attributes, dtype=np.int32)
