@@ -55,6 +55,23 @@ def validate(wlfw_val_dataloader, plfd_backbone, auxiliarynet):
             interocular_distance = np.sqrt(np.sum((landmarks[:, 60, :] - landmarks[:,72, :]) ** 2, axis=1))
             # interpupil_distance = np.sqrt(np.sum((landmarks[:, 60, :] - landmarks[:, 72, :]) ** 2, axis=1))
             error_norm = np.mean(error_diff / interocular_distance)
+
+            # show result 
+            # show_img = np.array(np.transpose(img[0].cpu().numpy(), (1, 2, 0)))
+            # show_img = (show_img * 256).astype(np.uint8)
+            # np.clip(show_img, 0, 255)
+
+            # pre_landmark = landmarks[0] * [112, 112]
+
+            # cv2.imwrite("xxx.jpg", show_img)
+            # img_clone = cv2.imread("xxx.jpg")
+
+            # for (x, y) in pre_landmark.astype(np.int32):
+            #     print("x:{0:}, y:{1:}".format(x, y))
+            #     cv2.circle(img_clone, (x, y), 1, (255,0,0),-1)
+            # cv2.imshow("xx.jpg", img_clone)
+            # cv2.waitKey(0)
+            
         losses.append(loss.cpu().numpy())
         losses_ION.append(error_norm)
 
