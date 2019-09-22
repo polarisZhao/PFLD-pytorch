@@ -46,6 +46,8 @@ $ python3 test.py
 
  PFLD: A Practical Facial Landmark Detector https://arxiv.org/pdf/1902.10859.pdf
 
+Tensorflow Implementation: https://github.com/guoqiangqi/PFLD
+
 #### TODO:
 
 - [ ] fix bugs
