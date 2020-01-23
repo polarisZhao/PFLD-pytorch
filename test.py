@@ -18,6 +18,8 @@ from pfld.utils import AverageMeter
 
 import cv2
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 def validate(wlfw_val_dataloader, plfd_backbone, auxiliarynet):
     plfd_backbone.eval()
     auxiliarynet.eval()
@@ -28,19 +30,19 @@ def validate(wlfw_val_dataloader, plfd_backbone, auxiliarynet):
 
         for img, landmark_gt, attribute_gt, euler_angle_gt in wlfw_val_dataloader:
             img.requires_grad = False
-            img = img.cuda(non_blocking=True)
+            img = img.to(device)
 
             attribute_gt.requires_grad = False
-            attribute_gt = attribute_gt.cuda(non_blocking=True)
+            attribute_gt = attribute_gt.to(device)
 
             landmark_gt.requires_grad = False
-            landmark_gt = landmark_gt.cuda(non_blocking=True)
+            landmark_gt = landmark_gt.to(device)
 
             euler_angle_gt.requires_grad = False
-            euler_angle_gt = euler_angle_gt.cuda(non_blocking=True)
+            euler_angle_gt = euler_angle_gt.to(device)
 
-            plfd_backbone = plfd_backbone.cuda()
-            auxiliarynet = auxiliarynet.cuda()
+            plfd_backbone = plfd_backbone.to(device)
+            auxiliarynet = auxiliarynet.to(device)
 
             _, landmarks = plfd_backbone(img)
 
@@ -80,10 +82,10 @@ def validate(wlfw_val_dataloader, plfd_backbone, auxiliarynet):
 
 
 def main(args):
-    checkpoint = torch.load(args.model_path)
+    checkpoint = torch.load(args.model_path, map_location=device)
 
-    plfd_backbone = PFLDInference().cuda()
-    auxiliarynet = AuxiliaryNet().cuda()
+    plfd_backbone = PFLDInference().to(device)
+    auxiliarynet = AuxiliaryNet().to(device)
 
     plfd_backbone.load_state_dict(checkpoint['plfd_backbone'])
     auxiliarynet.load_state_dict(checkpoint['auxiliarynet'])

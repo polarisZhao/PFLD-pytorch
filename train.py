@@ -22,6 +22,7 @@ from models.pfld import PFLDInference, AuxiliaryNet
 from pfld.loss import PFLDLoss
 from pfld.utils import AverageMeter
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def print_args(args):
     for arg in vars(args):
@@ -49,19 +50,19 @@ def train(train_loader, plfd_backbone, auxiliarynet, criterion, optimizer,
 
     for img, landmark_gt, attribute_gt, euler_angle_gt in train_loader:
         img.requires_grad = False
-        img = img.cuda(non_blocking=True)
+        img = img.to(device)
 
         attribute_gt.requires_grad = False
-        attribute_gt = attribute_gt.cuda(non_blocking=True)
+        attribute_gt = attribute_gt.to(device)
 
         landmark_gt.requires_grad = False
-        landmark_gt = landmark_gt.cuda(non_blocking=True)
+        landmark_gt = landmark_gt.to(device)
 
         euler_angle_gt.requires_grad = False
-        euler_angle_gt = euler_angle_gt.cuda(non_blocking=True)
+        euler_angle_gt = euler_angle_gt.to(device)
 
-        plfd_backbone = plfd_backbone.cuda()
-        auxiliarynet = auxiliarynet.cuda()
+        plfd_backbone = plfd_backbone.to(device)
+        auxiliarynet = auxiliarynet.to(device)
 
         features, landmarks = plfd_backbone(img)
         angle = auxiliarynet(features)
@@ -84,20 +85,13 @@ def validate(wlfw_val_dataloader, plfd_backbone, auxiliarynet, criterion,
     losses = []
     with torch.no_grad():
         for img, landmark_gt, attribute_gt, euler_angle_gt in wlfw_val_dataloader:
-            img.requires_grad = False
-            img = img.cuda(non_blocking=True)
+            img = img.to(device)
+            attribute_gt = attribute_gt.to(device)
+            landmark_gt = landmark_gt.to(device)
+            euler_angle_gt = euler_angle_gt.to(device)
 
-            attribute_gt.requires_grad = False
-            attribute_gt = attribute_gt.cuda(non_blocking=True)
-
-            landmark_gt.requires_grad = False
-            landmark_gt = landmark_gt.cuda(non_blocking=True)
-
-            euler_angle_gt.requires_grad = False
-            euler_angle_gt = euler_angle_gt.cuda(non_blocking=True)
-
-            plfd_backbone = plfd_backbone.cuda()
-            auxiliarynet = auxiliarynet.cuda()
+            plfd_backbone = plfd_backbone.to(device)
+            auxiliarynet = auxiliarynet.to(device)
 
             _, landmark = plfd_backbone(img)
 
@@ -121,8 +115,8 @@ def main(args):
     print_args(args)
 
     # Step 2: model, criterion, optimizer, scheduler
-    plfd_backbone = PFLDInference().cuda()
-    auxiliarynet = AuxiliaryNet().cuda()
+    plfd_backbone = PFLDInference().to(device)
+    auxiliarynet = AuxiliaryNet().to(device)
     criterion = PFLDLoss()
     optimizer = torch.optim.Adam(
         [{
@@ -178,7 +172,7 @@ def main(args):
 def parse_args():
     parser = argparse.ArgumentParser(description='Trainging Template')
     # general
-    parser.add_argument('-j', '--workers', default=8, type=int)
+    parser.add_argument('-j', '--workers', default=0, type=int)
     parser.add_argument('--devices_id', default='0', type=str)  #TBD
     parser.add_argument('--test_initial', default='false', type=str2bool)  #TBD
 

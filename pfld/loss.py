@@ -1,6 +1,8 @@
 import torch
 from torch import nn
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 class PFLDLoss(nn.Module):
     def __init__(self):
         super(PFLDLoss, self).__init__()
@@ -11,7 +13,7 @@ class PFLDLoss(nn.Module):
         mat_ratio = torch.mean(attributes_w_n, axis=0)
         mat_ratio = torch.Tensor([
             1.0 / (x) if x > 0 else train_batchsize for x in mat_ratio
-        ]).cuda()
+        ]).to(device)
         weight_attribute = torch.sum(attributes_w_n.mul(mat_ratio), axis=1)
 
         l2_distant = torch.sum((landmark_gt - landmarks) * (landmark_gt - landmarks), axis=1)

@@ -10,13 +10,14 @@ import cv2
 from models.pfld import PFLDInference, AuxiliaryNet
 from mtcnn.detector import detect_faces, show_bboxes
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def main(args):
-    checkpoint = torch.load(args.model_path)
-    plfd_backbone = PFLDInference().cuda()
+    checkpoint = torch.load(args.model_path, map_location=device)
+    plfd_backbone = PFLDInference().to(device)
     plfd_backbone.load_state_dict(checkpoint['plfd_backbone'])
     plfd_backbone.eval()
-    plfd_backbone = plfd_backbone.cuda()
+    plfd_backbone = plfd_backbone.to(device)
     transform = transforms.Compose([transforms.ToTensor()])
 
     cap = cv2.VideoCapture(0)
@@ -59,7 +60,7 @@ def main(args):
 
             input = cv2.resize(cropped, (112, 112))
             input = cv2.cvtColor(input, cv2.COLOR_BGR2RGB)
-            input = transform(input).unsqueeze(0).cuda()
+            input = transform(input).unsqueeze(0).to(device)
             _, landmarks = plfd_backbone(input)
             pre_landmark = landmarks[0]
             pre_landmark = pre_landmark.cpu().detach().numpy().reshape(-1, 2) * [size, size]
