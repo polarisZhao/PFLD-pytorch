@@ -49,26 +49,16 @@ def train(train_loader, plfd_backbone, auxiliarynet, criterion, optimizer,
     losses = AverageMeter()
 
     for img, landmark_gt, attribute_gt, euler_angle_gt in train_loader:
-        img.requires_grad = False
         img = img.to(device)
-
-        attribute_gt.requires_grad = False
         attribute_gt = attribute_gt.to(device)
-
-        landmark_gt.requires_grad = False
         landmark_gt = landmark_gt.to(device)
-
-        euler_angle_gt.requires_grad = False
         euler_angle_gt = euler_angle_gt.to(device)
-
         plfd_backbone = plfd_backbone.to(device)
         auxiliarynet = auxiliarynet.to(device)
-
         features, landmarks = plfd_backbone(img)
         angle = auxiliarynet(features)
         weighted_loss, loss = criterion(attribute_gt, landmark_gt, euler_angle_gt,
                                     angle, landmarks, args.train_batchsize)
-
         optimizer.zero_grad()
         weighted_loss.backward()
         optimizer.step()
@@ -77,11 +67,9 @@ def train(train_loader, plfd_backbone, auxiliarynet, criterion, optimizer,
     return weighted_loss, loss
 
 
-def validate(wlfw_val_dataloader, plfd_backbone, auxiliarynet, criterion,
-             epoch):
+def validate(wlfw_val_dataloader, plfd_backbone, auxiliarynet, criterion):
     plfd_backbone.eval()
-    auxiliarynet.eval()
-
+    auxiliarynet.eval() 
     losses = []
     with torch.no_grad():
         for img, landmark_gt, attribute_gt, euler_angle_gt in wlfw_val_dataloader:
@@ -89,16 +77,13 @@ def validate(wlfw_val_dataloader, plfd_backbone, auxiliarynet, criterion,
             attribute_gt = attribute_gt.to(device)
             landmark_gt = landmark_gt.to(device)
             euler_angle_gt = euler_angle_gt.to(device)
-
             plfd_backbone = plfd_backbone.to(device)
             auxiliarynet = auxiliarynet.to(device)
-
             _, landmark = plfd_backbone(img)
-
-            loss = torch.mean(
-                torch.sum((landmark_gt - landmark)**2,axis=1))
+            loss = torch.mean(torch.sum((landmark_gt - landmark)**2, axis=1))
             losses.append(loss.cpu().numpy())
-
+    print("===> Evaluate:")
+    print('Eval set: Average loss: {:.4f} '.format(np.mean(losses))
     return np.mean(losses)
 
 
@@ -126,8 +111,7 @@ def main(args):
         }],
         lr=args.base_lr,
         weight_decay=args.weight_decay)
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, mode='min', patience=args.lr_patience, verbose=True)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=args.lr_patience, verbose=True)
 
     # step 3: data
     # argumetion
@@ -161,7 +145,7 @@ def main(args):
         }, filename)
 
         val_loss = validate(wlfw_val_dataloader, plfd_backbone, auxiliarynet,
-                            criterion, epoch)
+                            criterion)
 
         scheduler.step(val_loss)
         writer.add_scalar('data/weighted_loss', weighted_train_loss, epoch)
@@ -170,7 +154,7 @@ def main(args):
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Trainging Template')
+    parser = argparse.ArgumentParser(description='pfld')
     # general
     parser.add_argument('-j', '--workers', default=0, type=int)
     parser.add_argument('--devices_id', default='0', type=str)  #TBD
