@@ -42,6 +42,41 @@ $ python3 test.py
 
 ![](./results/example.png)
 
+#### pytorch -> onnx -> ncnn
+
+**Pytorch -> onnx**
+
+~~~~shell
+python3 pytorch2onnx.py
+~~~~
+
+**onnx -> ncnn**
+
+how to build :https://github.com/Tencent/ncnn/wiki/how-to-build
+
+~~~shell
+cd ncnn/build/tools/onnx
+./onnx2ncnn pfld-sim.onnx pfld-sim.param pfld-sim.bin
+~~~
+
+Now you can use **pfld-sim.param** and **pfld-sim.bin** in ncnn:
+
+~~~cpp
+ncnn::Net pfld;
+pfld.load_param("path/to/pfld-sim.param");
+pfld.load_model("path/to/pfld-sim.bin");
+
+cv::Mat img = cv::imread(imagepath, 1);
+ncnn::Mat in = ncnn::Mat::from_pixels_resize(img.data, ncnn::Mat::PIXEL_BGR, img.cols, img.rows, 112, 112);
+const float norm_vals[3] = {1/255.f, 1/255.f, 1/255.f};
+in.substract_mean_normalize(0, norm_vals);
+
+ncnn::Extractor ex = pfld.create_extractor();
+ex.input("input_1", in);
+ncnn::Mat out;
+ex.extract("415", out);
+~~~
+
 #### reference: 
 
  PFLD: A Practical Facial Landmark Detector https://arxiv.org/pdf/1902.10859.pdf
@@ -50,9 +85,9 @@ Tensorflow Implementation: https://github.com/guoqiangqi/PFLD
 
 #### TODO:
 
-- [ ] fix bugs
+- [x]  Train on CPU and GPU 
 
-- [ ] ncnn inference
-
+- [x] ncnn inference
 - [ ] retrain on datasets AFLW and 300W
+- [ ] fix bugs
 
