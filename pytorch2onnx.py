@@ -12,7 +12,7 @@ import onnxsim
 parser = argparse.ArgumentParser(description='pytorch2onnx')
 parser.add_argument('--torch_model', default="./checkpoint/snapshot/checkpoint.pth.tar")
 parser.add_argument('--onnx_model', default="./output/pfld.onnx")
-parser.add_argument('--onnx_model_sim', help='Output ONNX model', default="./output/pfld-smi.onnx")
+parser.add_argument('--onnx_model_sim', help='Output ONNX model', default="./output/pfld-sim.onnx")
 args = parser.parse_args()
 
 print("=====> load pytorch checkpoint...")
