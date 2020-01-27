@@ -80,3 +80,32 @@ class AverageMeter(object):
         self.sum += val * n
         self.count += n
         self.avg = self.sum / self.count
+
+def vis_landmark(img_path, annotation, norm, point_num):
+    """
+    line format: [img_name bbox_x1 bbox_y1  bbox_x2 bbox_y2 landmark_x1 landmark y1 ...]
+    """
+    # check point len
+    assert len(line) == 1+4+point_num*2 # img_path + bbox + point_num*2
+    
+    img = cv2.imread(img_path)
+    h, w = img.shape[:2]
+    
+    img_name = annotation[0]
+    bbox_x1, bbox_y1, bbox_x2, bbox_y2 = annotation[1:5]
+    landmark = annotation[5:]
+    
+    landmark_x = line[1+4::2]
+    landmark_y = line[1+4+1::2] 
+    if norm:
+        for i in range(len(landmark_x)):
+            landmark_x[i] = landmark_x[i] * w
+            landmark_y[i] = landmark_y[i] * h
+        
+    # draw bbox and face landmark
+    cv2.rectangle(img, (int(bbox_x1), int(bbox_y1)), (int(bbox_x2), int(bbox_y2)), (0, 0, 255), 2)
+    for i in range(len(landmark_x)):
+        cv2.circle(img, (int(landmark_x[i]), int(landmark_y[i])), 2, (255, 0, 0), -1)
+
+    cv2.imshow("image", img)
+    cv2.waitKey(0)
