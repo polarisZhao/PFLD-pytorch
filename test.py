@@ -1,111 +1,134 @@
+# ------------------------------------------------------------------------------
+# Copyright (c) Zhichao Zhao
+# Licensed under the MIT License.
+# Created by Zhichao zhao(zhaozhichao4515@gmail.com)
+# ------------------------------------------------------------------------------
 import argparse
-import logging
-from pathlib import Path
 import time
 
-import numpy as np
-import torch
-import torchvision
-from torchvision import datasets, transforms
-
-from torch.utils import data
-from torch.utils.data import DataLoader
-
-from dataset.datasets import WLFWDatasets
-from models.pfld import PFLDInference, AuxiliaryNet
-from pfld.loss import PFLDLoss
-from pfld.utils import AverageMeter
-
 import cv2
+import numpy as np
+from matplotlib import pyplot as plt
+from scipy.integrate import simps
 
+import torch
+from torchvision import transforms
+from torch.utils.data import DataLoader
+import torch.backends.cudnn as cudnn
+from dataset.datasets import WLFWDatasets
+
+from models.pfld import PFLDInference
+
+cudnn.benchmark = True
+cudnn.determinstic = True
+cudnn.enabled = True
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-def validate(wlfw_val_dataloader, plfd_backbone, auxiliarynet):
+def compute_nme(preds, target):
+    """ preds/target:: numpy array, shape is (N, L, 2)
+        N: batchsize L: num of landmark 
+    """
+    N = preds.shape[0]
+    L = preds.shape[1]
+    rmse = np.zeros(N)
+
+    for i in range(N):
+        pts_pred, pts_gt = preds[i, ], target[i, ]
+        if L == 19:  # aflw
+            interocular = 34 # meta['box_size'][i]
+        elif L == 29:  # cofw
+            interocular = np.linalg.norm(pts_gt[8, ] - pts_gt[9, ])
+        elif L == 68:  # 300w
+            # interocular
+            interocular = np.linalg.norm(pts_gt[36, ] - pts_gt[45, ])
+        elif L == 98:
+            interocular = np.linalg.norm(pts_gt[60, ] - pts_gt[72, ])
+        else:
+            raise ValueError('Number of landmarks is wrong')
+        rmse[i] = np.sum(np.linalg.norm(pts_pred - pts_gt, axis=1)) / (interocular * L)
+
+    return rmse
+
+def compute_auc(errors, failureThreshold, step=0.0001, showCurve=True):
+    nErrors = len(errors)
+    xAxis = list(np.arange(0., failureThreshold + step, step))
+    ced =  [float(np.count_nonzero([errors <= x])) / nErrors for x in xAxis]
+
+    AUC = simps(ced, x=xAxis) / failureThreshold
+    failureRate = 1. - ced[-1]
+
+    if showCurve:
+        plt.plot(xAxis, ced)
+        plt.show()
+
+    return AUC, failureRate 
+
+def validate(wlfw_val_dataloader, plfd_backbone):
     plfd_backbone.eval()
-    auxiliarynet.eval()
 
+    nme_list = []
+    cost_time = []
     with torch.no_grad():
-        losses = []
-        losses_ION = []
-
-        for img, landmark_gt, attribute_gt, euler_angle_gt in wlfw_val_dataloader:
-            img.requires_grad = False
+        for img, landmark_gt, _, _ in wlfw_val_dataloader:
             img = img.to(device)
-
-            attribute_gt.requires_grad = False
-            attribute_gt = attribute_gt.to(device)
-
-            landmark_gt.requires_grad = False
             landmark_gt = landmark_gt.to(device)
-
-            euler_angle_gt.requires_grad = False
-            euler_angle_gt = euler_angle_gt.to(device)
-
             plfd_backbone = plfd_backbone.to(device)
-            auxiliarynet = auxiliarynet.to(device)
 
+            start_time = time.time()
             _, landmarks = plfd_backbone(img)
-
-            loss = torch.mean(
-                torch.sqrt(torch.sum((landmark_gt - landmarks)**2, axis=1))
-                )
+            cost_time.append(time.time() - start_time)
 
             landmarks = landmarks.cpu().numpy()
-            landmarks = landmarks.reshape(landmarks.shape[0], -1, 2)
-            landmark_gt = landmark_gt.reshape(landmark_gt.shape[0], -1, 2).cpu().numpy()
-            error_diff = np.sum(np.sqrt(np.sum((landmark_gt - landmarks) ** 2, axis=2)), axis=1)
-            interocular_distance = np.sqrt(np.sum((landmarks[:, 60, :] - landmarks[:,72, :]) ** 2, axis=1))
-            # interpupil_distance = np.sqrt(np.sum((landmarks[:, 60, :] - landmarks[:, 72, :]) ** 2, axis=1))
-            error_norm = np.mean(error_diff / interocular_distance)
+            landmarks = landmarks.reshape(landmarks.shape[0], -1, 2) # landmark 
+            landmark_gt = landmark_gt.reshape(landmark_gt.shape[0], -1, 2).cpu().numpy() # landmark_gt
 
-            # show result 
-            # show_img = np.array(np.transpose(img[0].cpu().numpy(), (1, 2, 0)))
-            # show_img = (show_img * 256).astype(np.uint8)
-            # np.clip(show_img, 0, 255)
+            if args.show_image:
+                show_img = np.array(np.transpose(img[0].cpu().numpy(), (1, 2, 0)))
+                show_img = (show_img * 256).astype(np.uint8)
+                np.clip(show_img, 0, 255)
 
-            # pre_landmark = landmarks[0] * [112, 112]
+                pre_landmark = landmarks[0] * [112, 112]
 
-            # cv2.imwrite("xxx.jpg", show_img)
-            # img_clone = cv2.imread("xxx.jpg")
+                cv2.imwrite("xxx.jpg", show_img)
+                img_clone = cv2.imread("xxx.jpg")
 
-            # for (x, y) in pre_landmark.astype(np.int32):
-            #     print("x:{0:}, y:{1:}".format(x, y))
-            #     cv2.circle(img_clone, (x, y), 1, (255,0,0),-1)
-            # cv2.imshow("xx.jpg", img_clone)
-            # cv2.waitKey(0)
-            
-        losses.append(loss.cpu().numpy())
-        losses_ION.append(error_norm)
+                for (x, y) in pre_landmark.astype(np.int32):
+                    cv2.circle(img_clone, (x, y), 1, (255,0,0),-1)
+                cv2.imshow("xx.jpg", img_clone)
+                cv2.waitKey(0)
 
-        print("NME", np.mean(losses))
-        print("ION", np.mean(losses_ION))
+            nme_temp = compute_nme(landmarks, landmark_gt)
+            for item in nme_temp:
+                nme_list.append(item)
 
+        # nme
+        print('nme: {:.4f}'.format(np.mean(nme_list)))
+        # auc and failure rate
+        failureThreshold = 0.1
+        auc, failure_rate = compute_auc(nme_list, failureThreshold)
+        print('auc @ {:.1f} failureThreshold: {:.4f}'.format(failureThreshold, auc))
+        print('failure_rate: {:}'.format(failure_rate))
+        # inference time
+        print("inference_cost_time: {0:4f}".format(np.mean(cost_time)))
 
 def main(args):
     checkpoint = torch.load(args.model_path, map_location=device)
-
     plfd_backbone = PFLDInference().to(device)
-    auxiliarynet = AuxiliaryNet().to(device)
-
     plfd_backbone.load_state_dict(checkpoint['plfd_backbone'])
-    auxiliarynet.load_state_dict(checkpoint['auxiliarynet'])
 
     transform = transforms.Compose([transforms.ToTensor()])
-
     wlfw_val_dataset = WLFWDatasets(args.test_dataset, transform)
-    wlfw_val_dataloader = DataLoader(
-        wlfw_val_dataset, batch_size=8, shuffle=False, num_workers=0)
+    wlfw_val_dataloader = DataLoader(wlfw_val_dataset, batch_size=1, shuffle=False, num_workers=0)
 
-    validate(wlfw_val_dataloader, plfd_backbone, auxiliarynet)
+    validate(wlfw_val_dataloader, plfd_backbone)
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Testing')
     parser.add_argument('--model_path', default="./checkpoint/snapshot/checkpoint.pth.tar", type=str)
     parser.add_argument('--test_dataset', default='./data/test_data/list.txt', type=str)
-
+    parser.add_argument('--show_image', default=False, type=bool)
     args = parser.parse_args()
     return args
-
 
 if __name__ == "__main__":
     args = parse_args()
