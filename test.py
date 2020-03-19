@@ -84,7 +84,7 @@ def validate(wlfw_val_dataloader, plfd_backbone):
 
             if args.show_image:
                 show_img = np.array(np.transpose(img[0].cpu().numpy(), (1, 2, 0)))
-                show_img = (show_img * 256).astype(np.uint8)
+                show_img = (show_img * 255).astype(np.uint8)
                 np.clip(show_img, 0, 255)
 
                 pre_landmark = landmarks[0] * [112, 112]
