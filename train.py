@@ -83,7 +83,7 @@ def validate(wlfw_val_dataloader, plfd_backbone, auxiliarynet, criterion):
             loss = torch.mean(torch.sum((landmark_gt - landmark)**2, axis=1))
             losses.append(loss.cpu().numpy())
     print("===> Evaluate:")
-    print('Eval set: Average loss: {:.4f} '.format(np.mean(losses))
+    print('Eval set: Average loss: {:.4f} '.format(np.mean(losses)))
     return np.mean(losses)
 
 
