@@ -59,7 +59,7 @@ def main(args):
             cropped = cv2.resize(cropped, (112, 112))
 
             input = cv2.resize(cropped, (112, 112))
-            input = cv2.cvtColor(input, cv2.COLOR_BGR2RGB)
+            # input = cv2.cvtColor(input, cv2.COLOR_BGR2RGB)
             input = transform(input).unsqueeze(0).to(device)
             _, landmarks = plfd_backbone(input)
             pre_landmark = landmarks[0]
