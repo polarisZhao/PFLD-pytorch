@@ -31,7 +31,10 @@ training :
 ~~~shell
 $ python3 train.py
 ~~~
-
+use tensorboard, open a new terminal
+~~~
+$ tensorboard  --logdir=./checkpoint/tensorboard/
+~~~
 testing:
 
 ~~~shell
