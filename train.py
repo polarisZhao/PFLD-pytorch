@@ -196,7 +196,7 @@ def parse_args():
                         type=str)
     parser.add_argument(
         '--resume',
-        default='./checkpoint/snapshot/checkpoint_epoch_308.pth.tar',
+        default='',
         type=str,
         metavar='PATH')
 
