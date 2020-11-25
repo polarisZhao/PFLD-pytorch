@@ -16,15 +16,7 @@ import math
 def conv_bn(inp, oup, kernel, stride, padding=1):
     return nn.Sequential(
         nn.Conv2d(inp, oup, kernel, stride, padding, bias=False),
-        nn.BatchNorm2d(oup),
-        nn.ReLU(inplace=True))
-
-
-def conv_1x1_bn(inp, oup):
-    return nn.Sequential(
-        nn.Conv2d(inp, oup, 1, 1, 0, bias=False),
-        nn.BatchNorm2d(oup),
-        nn.ReLU(inplace=True))
+        nn.BatchNorm2d(oup), nn.ReLU(inplace=True))
 
 
 class InvertedResidual(nn.Module):
@@ -39,14 +31,13 @@ class InvertedResidual(nn.Module):
             nn.Conv2d(inp, inp * expand_ratio, 1, 1, 0, bias=False),
             nn.BatchNorm2d(inp * expand_ratio),
             nn.ReLU(inplace=True),
-            nn.Conv2d(
-                inp * expand_ratio,
-                inp * expand_ratio,
-                3,
-                stride,
-                1,
-                groups=inp * expand_ratio,
-                bias=False),
+            nn.Conv2d(inp * expand_ratio,
+                      inp * expand_ratio,
+                      3,
+                      stride,
+                      1,
+                      groups=inp * expand_ratio,
+                      bias=False),
             nn.BatchNorm2d(inp * expand_ratio),
             nn.ReLU(inplace=True),
             nn.Conv2d(inp * expand_ratio, oup, 1, 1, 0, bias=False),
@@ -64,13 +55,21 @@ class PFLDInference(nn.Module):
     def __init__(self):
         super(PFLDInference, self).__init__()
 
-        self.conv1 = nn.Conv2d(
-            3, 64, kernel_size=3, stride=2, padding=1, bias=False)
+        self.conv1 = nn.Conv2d(3,
+                               64,
+                               kernel_size=3,
+                               stride=2,
+                               padding=1,
+                               bias=False)
         self.bn1 = nn.BatchNorm2d(64)
         self.relu = nn.ReLU(inplace=True)
 
-        self.conv2 = nn.Conv2d(
-            64, 64, kernel_size=3, stride=1, padding=1, bias=False)
+        self.conv2 = nn.Conv2d(64,
+                               64,
+                               kernel_size=3,
+                               stride=1,
+                               padding=1,
+                               bias=False)
         self.bn2 = nn.BatchNorm2d(64)
         self.relu = nn.ReLU(inplace=True)
 
@@ -125,7 +124,7 @@ class PFLDInference(nn.Module):
         x2 = x2.view(x2.size(0), -1)
 
         x3 = self.relu(self.conv8(x))
-        x3 = x3.view(x1.size(0), -1)
+        x3 = x3.view(x3.size(0), -1)
 
         multi_scale = torch.cat([x1, x2, x3], 1)
         landmarks = self.fc(multi_scale)
@@ -159,9 +158,9 @@ class AuxiliaryNet(nn.Module):
 
 # if __name__ == '__main__':
 #     input = torch.randn(1, 3, 112, 112)
-#     plfd_backbone = PFLDInference()
+#     pfld_backbone = PFLDInference()
 #     auxiliarynet = AuxiliaryNet()
-#     features, landmarks = plfd_backbone(input)
+#     features, landmarks = pfld_backbone(input)
 #     angle = auxiliarynet(features)
 
 #     print("angle.shape:{0:}, landmarks.shape: {1:}".format(

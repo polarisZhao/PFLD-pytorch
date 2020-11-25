@@ -2,13 +2,13 @@
 
 Implementation of  PFLD A Practical Facial Landmark Detector by pytorch.
 
-#### install requirements
+#### 1. install requirements
 
 ~~~shell
 pip3 install -r requirements.txt
 ~~~
 
-#### Datasets
+#### 2. Datasets
 
 - **WFLW Dataset Download**
 
@@ -24,7 +24,7 @@ $ cd data
 $ python3 SetPreparation.py
 ~~~
 
-#### training & testing
+#### 3. training & testing
 
 training :
 
@@ -41,11 +41,11 @@ testing:
 $ python3 test.py
 ~~~
 
-#### results:
+#### 4. results:
 
 ![](./results/example.png)
 
-#### pytorch -> onnx -> ncnn
+#### 5. pytorch -> onnx -> ncnn
 
 **Pytorch -> onnx**
 
@@ -80,17 +80,9 @@ ncnn::Mat out;
 ex.extract("415", out);
 ~~~
 
-#### reference: 
+#### 6. reference: 
 
  PFLD: A Practical Facial Landmark Detector https://arxiv.org/pdf/1902.10859.pdf
 
 Tensorflow Implementation: https://github.com/guoqiangqi/PFLD
-
-#### TODO:
-
-- [x]  Train on CPU and GPU 
-
-- [x] ncnn inference
-- [ ] retrain on datasets AFLW and 300W
-- [ ] fix bugs
 

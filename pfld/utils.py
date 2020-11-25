@@ -2,7 +2,10 @@ import cv2
 import numpy as np
 import math
 
-def calculate_pitch_yaw_roll(landmarks_2D, cam_w=256, cam_h=256,
+
+def calculate_pitch_yaw_roll(landmarks_2D,
+                             cam_w=256,
+                             cam_h=256,
                              radians=False):
     """ Return the the pitch  yaw and roll angles associated with the input image.
     @param radians When True it returns the angle in radians, otherwise in degrees.
@@ -49,23 +52,24 @@ def calculate_pitch_yaw_roll(landmarks_2D, cam_w=256, cam_h=256,
     # retval - bool
     # rvec - Output rotation vector that, together with tvec, brings points from the world coordinate system to the camera coordinate system.
     # tvec - Output translation vector. It is the position of the world origin (SELLION) in camera co-ords
-    _, rvec, tvec = cv2.solvePnP(landmarks_3D, landmarks_2D,
-                                      camera_matrix, camera_distortion)
-    #Get as input the rotational vector, Return a rotational matrix
+    _, rvec, tvec = cv2.solvePnP(landmarks_3D, landmarks_2D, camera_matrix,
+                                 camera_distortion)
+    # Get as input the rotational vector, Return a rotational matrix
 
     # const double PI = 3.141592653;
     # double thetaz = atan2(r21, r11) / PI * 180;
     # double thetay = atan2(-1 * r31, sqrt(r32*r32 + r33*r33)) / PI * 180;
     # double thetax = atan2(r32, r33) / PI * 180;
-    
+
     rmat, _ = cv2.Rodrigues(rvec)
     pose_mat = cv2.hconcat((rmat, tvec))
     _, _, _, _, _, _, euler_angles = cv2.decomposeProjectionMatrix(pose_mat)
-    return map(lambda k: k[0], euler_angles) # euler_angles contain (pitch, yaw, roll)
+    return map(lambda k: k[0],
+               euler_angles)  # euler_angles contain (pitch, yaw, roll)
+
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""
-
     def __init__(self):
         self.reset()
 
@@ -81,31 +85,34 @@ class AverageMeter(object):
         self.count += n
         self.avg = self.sum / self.count
 
+
 def vis_landmark(img_path, annotation, norm, point_num):
     """
     line format: [img_name bbox_x1 bbox_y1  bbox_x2 bbox_y2 landmark_x1 landmark y1 ...]
     """
     # check point len
-    assert len(line) == 1+4+point_num*2 # img_path + bbox + point_num*2
-    
+    assert len(line) == 1 + 4 + point_num * 2  # img_path + bbox + point_num*2
+
     img = cv2.imread(img_path)
     h, w = img.shape[:2]
-    
+
     img_name = annotation[0]
     bbox_x1, bbox_y1, bbox_x2, bbox_y2 = annotation[1:5]
     landmark = annotation[5:]
-    
-    landmark_x = line[1+4::2]
-    landmark_y = line[1+4+1::2] 
+
+    landmark_x = line[1 + 4::2]
+    landmark_y = line[1 + 4 + 1::2]
     if norm:
         for i in range(len(landmark_x)):
             landmark_x[i] = landmark_x[i] * w
             landmark_y[i] = landmark_y[i] * h
-        
+
     # draw bbox and face landmark
-    cv2.rectangle(img, (int(bbox_x1), int(bbox_y1)), (int(bbox_x2), int(bbox_y2)), (0, 0, 255), 2)
+    cv2.rectangle(img, (int(bbox_x1), int(bbox_y1)),
+                  (int(bbox_x2), int(bbox_y2)), (0, 0, 255), 2)
     for i in range(len(landmark_x)):
-        cv2.circle(img, (int(landmark_x[i]), int(landmark_y[i])), 2, (255, 0, 0), -1)
+        cv2.circle(img, (int(landmark_x[i]), int(landmark_y[i])), 2,
+                   (255, 0, 0), -1)
 
     cv2.imshow("image", img)
     cv2.waitKey(0)

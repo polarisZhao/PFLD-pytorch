@@ -10,23 +10,30 @@ import torch
 import onnxsim
 
 parser = argparse.ArgumentParser(description='pytorch2onnx')
-parser.add_argument('--torch_model', default="./checkpoint/snapshot/checkpoint.pth.tar")
+parser.add_argument('--torch_model',
+                    default="./checkpoint/snapshot/checkpoint.pth.tar")
 parser.add_argument('--onnx_model', default="./output/pfld.onnx")
-parser.add_argument('--onnx_model_sim', help='Output ONNX model', default="./output/pfld-sim.onnx")
+parser.add_argument('--onnx_model_sim',
+                    help='Output ONNX model',
+                    default="./output/pfld-sim.onnx")
 args = parser.parse_args()
 
 print("=====> load pytorch checkpoint...")
 checkpoint = torch.load(args.torch_model, map_location=torch.device('cpu'))
-plfd_backbone = PFLDInference()
-plfd_backbone.load_state_dict(checkpoint['plfd_backbone'])
-print("PFLD bachbone:", plfd_backbone)
+pfld_backbone = PFLDInference()
+pfld_backbone.load_state_dict(checkpoint['pfld_backbone'])
+print("PFLD bachbone:", pfld_backbone)
 
 print("=====> convert pytorch model to onnx...")
-dummy_input = Variable(torch.randn(1, 3, 112, 112)) 
+dummy_input = Variable(torch.randn(1, 3, 112, 112))
 input_names = ["input_1"]
-output_names = [ "output_1" ]
-torch.onnx.export(plfd_backbone, dummy_input, args.onnx_model, verbose=True, input_names=input_names, output_names=output_names)
-
+output_names = ["output_1"]
+torch.onnx.export(pfld_backbone,
+                  dummy_input,
+                  args.onnx_model,
+                  verbose=True,
+                  input_names=input_names,
+                  output_names=output_names)
 
 print("====> check onnx model...")
 import onnx
