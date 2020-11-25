@@ -1,14 +1,13 @@
 from __future__ import print_function
-import numpy as np
-import torch
-from torch.autograd import Variable
-import torch.nn as nn
-import torch.nn.functional as F
-from collections import OrderedDict
 import cv2
 import math
-import argparse
 import os
+import numpy as np
+from collections import OrderedDict
+
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 
 
 def nms(boxes, overlap_threshold=0.5, mode='union'):
@@ -37,10 +36,10 @@ def nms(boxes, overlap_threshold=0.5, mode='union'):
         elif mode == 'union':
             overlap = inter / (area[i] + area[ids[:last]] - inter)
 
-        ids = np.delete(ids,
-                        np.concatenate(
-                            [[last],
-                             np.where(overlap > overlap_threshold)[0]]))
+        ids = np.delete(
+            ids,
+            np.concatenate([[last],
+                            np.where(overlap > overlap_threshold)[0]]))
     return pick
 
 
@@ -74,8 +73,8 @@ def get_image_boxes(bounding_boxes, img, size=24):
     width = img.shape[1]
     height = img.shape[0]
 
-    [dy, edy, dx, edx, y, ey, x, ex, w, h] = correct_bboxes(
-        bounding_boxes, width, height)
+    [dy, edy, dx, edx, y, ey, x, ex, w,
+     h] = correct_bboxes(bounding_boxes, width, height)
     img_boxes = np.zeros((num_boxes, 3, size, size), 'float32')
 
     for i in range(num_boxes):
@@ -155,14 +154,18 @@ class PNet(nn.Module):
     def __init__(self):
         super(PNet, self).__init__()
         self.features = nn.Sequential(
-            OrderedDict([('conv1', nn.Conv2d(3, 10, 3, 1)), ('prelu1', nn.PReLU(10)),
+            OrderedDict([('conv1', nn.Conv2d(3, 10, 3, 1)),
+                         ('prelu1', nn.PReLU(10)),
                          ('pool1', nn.MaxPool2d(2, 2, ceil_mode=True)),
-                         ('conv2', nn.Conv2d(10, 16, 3, 1)), ('prelu2', nn.PReLU(16)),
-                         ('conv3', nn.Conv2d(16, 32, 3, 1)), ('prelu3', nn.PReLU(32))]))
+                         ('conv2', nn.Conv2d(10, 16, 3, 1)),
+                         ('prelu2', nn.PReLU(16)),
+                         ('conv3', nn.Conv2d(16, 32, 3, 1)),
+                         ('prelu3', nn.PReLU(32))]))
         self.conv4_1 = nn.Conv2d(32, 2, 1, 1)
         self.conv4_2 = nn.Conv2d(32, 4, 1, 1)
 
-        weights = np.load(os.path.join(os.path.dirname(__file__), 'pnet.npy'), allow_pickle=True)[()]
+        weights = np.load(os.path.join(os.path.dirname(__file__), 'pnet.npy'),
+                          allow_pickle=True)[()]
         for n, p in self.named_parameters():
             p.data = torch.FloatTensor(weights[n])
 
@@ -178,15 +181,21 @@ class RNet(nn.Module):
     def __init__(self):
         super(RNet, self).__init__()
         self.features = nn.Sequential(
-            OrderedDict([('conv1', nn.Conv2d(3, 28, 3, 1)), ('prelu1', nn.PReLU(28)),
-                         ('pool1', nn.MaxPool2d(3, 2, ceil_mode=True)), ('conv2', nn.Conv2d(28, 48, 3, 1)),
-                         ('prelu2', nn.PReLU(48)), ('pool2', nn.MaxPool2d(3, 2, ceil_mode=True)),
-                         ('conv3', nn.Conv2d(48, 64, 2, 1)), ('prelu3', nn.PReLU(64)),
-                         ('flatten', Flatten()), ('conv4', nn.Linear(576, 128)), ('prelu4', nn.PReLU(128))]))
+            OrderedDict([('conv1', nn.Conv2d(3, 28, 3, 1)),
+                         ('prelu1', nn.PReLU(28)),
+                         ('pool1', nn.MaxPool2d(3, 2, ceil_mode=True)),
+                         ('conv2', nn.Conv2d(28, 48, 3, 1)),
+                         ('prelu2', nn.PReLU(48)),
+                         ('pool2', nn.MaxPool2d(3, 2, ceil_mode=True)),
+                         ('conv3', nn.Conv2d(48, 64, 2, 1)),
+                         ('prelu3', nn.PReLU(64)), ('flatten', Flatten()),
+                         ('conv4', nn.Linear(576, 128)),
+                         ('prelu4', nn.PReLU(128))]))
         self.conv5_1 = nn.Linear(128, 2)
         self.conv5_2 = nn.Linear(128, 4)
 
-        weights =np.load(os.path.join(os.path.dirname(__file__), 'rnet.npy'), allow_pickle=True)[()]
+        weights = np.load(os.path.join(os.path.dirname(__file__), 'rnet.npy'),
+                          allow_pickle=True)[()]
         for n, p in self.named_parameters():
             p.data = torch.FloatTensor(weights[n])
 
@@ -223,7 +232,8 @@ class ONet(nn.Module):
         self.conv6_1 = nn.Linear(256, 2)
         self.conv6_2 = nn.Linear(256, 4)
         self.conv6_3 = nn.Linear(256, 10)
-        weights = np.load(os.path.join(os.path.dirname(__file__), 'onet.npy'), allow_pickle=True)[()]
+        weights = np.load(os.path.join(os.path.dirname(__file__), 'onet.npy'),
+                          allow_pickle=True)[()]
         for n, p in self.named_parameters():
             p.data = torch.FloatTensor(weights[n])
 
@@ -241,7 +251,7 @@ def run_first_stage(image, net, scale, threshold):
     sw, sh = math.ceil(width * scale), math.ceil(height * scale)
     img = cv2.resize(image, (sw, sh))
     img = np.asarray(img, 'float32')
-    img = Variable(torch.FloatTensor(_preprocess(img)), volatile=True)
+    img = torch.FloatTensor(_preprocess(img))
     output = net(img)
     probs = output[1].data.numpy()[0, 1, :, :]
     offsets = output[0].data.numpy()
@@ -304,17 +314,19 @@ def detect_faces(image,
 
     # collect boxes (and offsets, and scores) from different scales
     bounding_boxes = [i for i in bounding_boxes if i is not None]
+    if len(bounding_boxes) == 0:
+        return [], []
     bounding_boxes = np.vstack(bounding_boxes)
     keep = nms(bounding_boxes[:, 0:5], nms_thresholds[0])
     bounding_boxes = bounding_boxes[keep]
-    bounding_boxes = calibrate_box(bounding_boxes[:, 0:5],
-                                   bounding_boxes[:, 5:])
+    bounding_boxes = calibrate_box(bounding_boxes[:, 0:5], bounding_boxes[:,
+                                                                          5:])
     bounding_boxes = convert_to_square(bounding_boxes)
     bounding_boxes[:, 0:4] = np.round(bounding_boxes[:, 0:4])
 
     # STAGE 2
     img_boxes = get_image_boxes(bounding_boxes, image, size=24)
-    img_boxes = Variable(torch.FloatTensor(img_boxes), volatile=True)
+    img_boxes = torch.FloatTensor(img_boxes)
     output = rnet(img_boxes)
     offsets = output[0].data.numpy()  # shape [n_boxes, 4]
     probs = output[1].data.numpy()  # shape [n_boxes, 2]
@@ -334,7 +346,7 @@ def detect_faces(image,
     img_boxes = get_image_boxes(bounding_boxes, image, size=48)
     if len(img_boxes) == 0:
         return [], []
-    img_boxes = Variable(torch.FloatTensor(img_boxes), volatile=True)
+    img_boxes = torch.FloatTensor(img_boxes)
     output = onet(img_boxes)
     landmarks = output[0].data.numpy()  # shape [n_boxes, 10]
     offsets = output[1].data.numpy()  # shape [n_boxes, 4]
