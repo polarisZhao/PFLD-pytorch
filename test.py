@@ -75,15 +75,11 @@ def validate(wlfw_val_dataloader, pfld_backbone):
     with torch.no_grad():
         for img, landmark_gt, _, _ in wlfw_val_dataloader:
             img = img.to(device)
-            print("img_size:", img.size())
-
             landmark_gt = landmark_gt.to(device)
             pfld_backbone = pfld_backbone.to(device)
 
             start_time = time.time()
             _, landmarks = pfld_backbone(img)
-            print("img2_size:", img.size())
-
             cost_time.append(time.time() - start_time)
 
             landmarks = landmarks.cpu().numpy()
@@ -93,7 +89,6 @@ def validate(wlfw_val_dataloader, pfld_backbone):
                                               2).cpu().numpy()  # landmark_gt
 
             if args.show_image:
-                print("show_img:", show_img.size())
                 show_img = np.array(
                     np.transpose(img[0].cpu().numpy(), (1, 2, 0)))
                 show_img = (show_img * 255).astype(np.uint8)

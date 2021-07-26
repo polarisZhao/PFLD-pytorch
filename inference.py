@@ -39,6 +39,7 @@ def detect_images_landmarks(pfld_backbone, image_dir_name, is_plot_landmark=Fals
     for image_name in tqdm(image_names_list):
         image_path = os.path.join(image_dir_name, image_name)
         image = cv2.imread(image_path)
+        image = cv2.resize(image, (112, 112))
         landmarks = inference_single_image_98_lm(pfld_backbone, image, device)
 
         if is_plot_landmark:
