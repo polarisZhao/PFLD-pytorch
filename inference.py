@@ -10,17 +10,14 @@ def inference_single_image_98_lm(pfld_backbone, image, device='cuda'):
     with torch.no_grad():
         img = torch.Tensor(image).permute(2, 0, 1).unsqueeze(0)
         img = img.to(device)
-        print("img_max:", img.max())
-        print("img_min:", img.min())
+
         _, landmarks = pfld_backbone(img)
-        print("img2_max:", img.max())
-        print("img2_min:", img.min())
         landmarks = landmarks.cpu().numpy()
         landmarks = landmarks.reshape(-1, 2) * [112, 112]
-        landmarks *= [112, 112]
-    # print("landmark:", landmarks)
-    # print("landmark_pre_max:", landmarks.max())
-    # print("landmark_pre_min:", landmarks.min())
+        landmarks = landmarks * [112, 112]
+    print("landmark:", landmarks)
+    print("landmark_pre_max:", landmarks.max())
+    print("landmark_pre_min:", landmarks.min())
 
     return landmarks
 
