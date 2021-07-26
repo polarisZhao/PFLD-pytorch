@@ -90,8 +90,7 @@ def validate(wlfw_val_dataloader, pfld_backbone):
                                           2)  # landmark
             landmark_gt = landmark_gt.reshape(landmark_gt.shape[0], -1,
                                               2).cpu().numpy()  # landmark_gt
-            print("landmarks_max", landmarks.max())
-            print("landmarks_min", landmarks.min())
+
             if args.show_image:
                 show_img = np.array(
                     np.transpose(img[0].cpu().numpy(), (1, 2, 0)))
