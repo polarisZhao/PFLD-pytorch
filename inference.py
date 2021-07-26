@@ -1,0 +1,50 @@
+import os
+import cv2
+import torch
+
+
+def inference_single_image_98_lm(pfld_backbone, image, device='cuda'):
+    pfld_backbone.eval()
+
+    with torch.no_grad():
+        img = torch.Tensor(image).unsqueeze(0)
+        img = img.to(device)
+        _, landmarks = pfld_backbone(img)
+        landmarks = landmarks.cpu().numpy()
+        print("landmark_pre_shape:", landmarks.shape)
+        landmarks = landmarks.reshape(-1, 2) * [112, 112]
+        landmarks *= [112, 112]
+    print("landmark_pre_max:", max(landmarks))
+    print("landmark_pre_min:", min(landmarks))
+
+    return landmarks
+
+
+def plot_landmarks(landmarks, image, save_result_path="result.jpg"):
+    for idx, point in enumerate(landmarks):
+        image = cv2.circle(image, (int(point[0]), int(point[1])), radius=1, color=(255, 0, 0), thickness=1)
+    cv2.imwrite(save_result_path, image)
+
+
+def detect_images_landmarks(pfld_backbone, image_dir_name, is_plot_landmark=False, device='cuda'):
+    pfld_backbone = pfld_backbone.to(device)
+
+    if is_plot_landmark:
+        output_dir = os.path.join(image_dir_name, "..", "debug_pfld_98_lm")
+        os.makedirs(output_dir, exist_ok=True)
+
+    landmark_list = []
+    image_names_list = sorted(os.listdir(image_dir_name))
+    for image_name in tqdm(image_names_list):
+        image_path = os.path.join(image_dir_name, image_name)
+        image = cv2.imread(image_path)
+        landmarks = inference_single_image_98_lm(pfld_backbone, image, device)
+
+        if is_plot_landmark:
+            save_result_path = os.path.join(output_dir, image_name)
+            plot_landmarks(landmarks, image, save_result_path)
+        landmark_list.append(landmarks)
+
+    if is_plot_landmark:
+        print(f"Images were saved at {output_dir}.")
+    return landmark_list
