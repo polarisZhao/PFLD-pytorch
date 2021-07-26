@@ -15,8 +15,8 @@ def inference_single_image_98_lm(pfld_backbone, image, device='cuda'):
         print("landmark_pre_shape:", landmarks.shape)
         landmarks = landmarks.reshape(-1, 2) * [112, 112]
         landmarks *= [112, 112]
-    print("landmark_pre_max:", max(landmarks))
-    print("landmark_pre_min:", min(landmarks))
+    print("landmark_pre_max:", landmarks.max())
+    print("landmark_pre_min:", landmarks.min())
 
     return landmarks
 
