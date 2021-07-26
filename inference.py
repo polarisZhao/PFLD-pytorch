@@ -1,6 +1,7 @@
 import os
 import cv2
 import torch
+from tqdm import tqdm
 
 
 def inference_single_image_98_lm(pfld_backbone, image, device='cuda'):
