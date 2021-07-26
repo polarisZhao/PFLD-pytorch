@@ -9,8 +9,7 @@ from inference import detect_images_landmarks
 
 def arg_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--pfld_model_path', "-pm", type=str, default="./checkpoint/snapshot/checkpoint.pth")
-    parser.add_argument("--points", "-p", dest="points", default=98, type=int, choices=[98, 106, 68])
+    parser.add_argument('--pfld_model_path', "-pm", type=str, default="./checkpoint/snapshot/checkpoint.pth.tar")
     parser.add_argument("--model_dir", "-m", type=str, required=True)
     parser.add_argument('--train_3d_with_align', action='store_true', default=False)
     parser.add_argument('--is_plot_landmark_debug', action='store_true', default=False)

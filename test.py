@@ -138,7 +138,7 @@ def main(args):
 def parse_args():
     parser = argparse.ArgumentParser(description='Testing')
     parser.add_argument('--model_path',
-                        default="./checkpoint/snapshot/checkpoint.pth",
+                        default="./checkpoint/snapshot/checkpoint.pth.tar",
                         type=str)
     parser.add_argument('--test_dataset',
                         default='./data/test_data/list.txt',
