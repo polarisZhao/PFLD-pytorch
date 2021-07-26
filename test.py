@@ -75,6 +75,9 @@ def validate(wlfw_val_dataloader, pfld_backbone):
     with torch.no_grad():
         for img, landmark_gt, _, _ in wlfw_val_dataloader:
             img = img.to(device)
+            print("img_max", img.max())
+            print("img_min", img.min())
+
             landmark_gt = landmark_gt.to(device)
             pfld_backbone = pfld_backbone.to(device)
 
