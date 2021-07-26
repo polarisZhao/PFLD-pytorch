@@ -8,7 +8,7 @@ def inference_single_image_98_lm(pfld_backbone, image, device='cuda'):
     pfld_backbone.eval()
 
     with torch.no_grad():
-        img = torch.Tensor(image).unsqueeze(0)
+        img = torch.Tensor(image).permute(2, 0, 1).unsqueeze(0)
         img = img.to(device)
         _, landmarks = pfld_backbone(img)
         landmarks = landmarks.cpu().numpy()
