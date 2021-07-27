@@ -41,7 +41,7 @@ def main():
 
     landmark_list = detect_images_landmarks(pfld_backbone, images_dir,
                                             is_plot_landmark=is_plot_landmark_debug, device=device)
-    np.save(os.path.join(model_dir, 'landmark_hrnet.npy'), landmark_list)
+    np.save(os.path.join(model_dir, 'landmark_pfld.npy'), landmark_list)
 
 
 if __name__ == '__main__':
