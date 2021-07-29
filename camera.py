@@ -16,7 +16,7 @@ def main(args):
 
     checkpoint = torch.load(args.model_path, map_location=device)
     pfld_backbone = PFLDInference().to(device)
-    pfld_backbone.load_state_dict(checkpoint['plfd_backbone'])
+    pfld_backbone.load_state_dict(checkpoint['pfld_backbone'])
     pfld_backbone.eval()
     pfld_backbone = pfld_backbone.to(device)
     transform = torchvision.transforms.Compose(
